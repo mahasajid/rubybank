@@ -1,121 +1,187 @@
 require 'csv'
 
+class Filreader
+    def initialize
+        @account_info = CSV.parse(File.read("Accounts.csv"), headers:true)
+    end
 
-def view_user
-    account_info = CSV.parse(File.read("Accounts.csv"), headers:true)
-    puts "Enter Your Account Title:"
-    title_search = gets
+    def getinfo
+        @account_info
+    end
 
-    idx = account_info.by_col[1].find_index(title_search) 
-    puts account_info[idx.to_i]
-end
-
-def view_all
-    account_info = CSV.parse(File.read("Accounts.csv"), headers:true)
-    account_info.each {|i| puts i}
-end
-
-def add_user
-    account_info = CSV.parse(File.read("Accounts.csv"), headers:true)
-    puts " Enter New Account Title:"
-    title_search = gets
-    puts "Enter Balance"
-    balance_amount = gets
-    idx = account_info.by_col[0].length + 1
-    CSV.open("Accounts.csv", "a+") do |csv|
-        csv << [idx, title_search, balance_amount.to_f]
-      end
-end
-
-def edit_user
-    account_info = CSV.parse(File.read("Accounts.csv"), headers:true)
-    puts "Enter Your Account Title:"
-    title_search = gets
-
-    puts " Enter New Account Title:"
-    new_title= gets
-
-    idx = account_info.by_col[1].find_index(title_search) 
-    account_info[idx.to_i]['title'] = new_title
-
-    File.open("Accounts.csv", 'w') do |f|
-        f.write(account_info.to_csv)
+    def setinfo(account_info)
+        File.open("Accounts.csv", 'w') do |f|
+            f.write(account_info.to_csv)
+        end
     end
 
 end
+class User < Filreader
 
-def delete_user
-    account_info = CSV.parse(File.read("Accounts.csv"), headers:true)
-    puts "Enter Your Account Title:"
-    title_search = gets
-    idx = account_info.by_col[1].find_index(title_search)
+    fileread = Filreader.new
+    @account_info = fileread.getinfo
 
-    table = CSV.table("Accounts.csv")
+    # def initialize(account_info)
+    # @account_info = account_info
+    # end
 
-    table.delete(idx) 
-
-    File.open("Accounts.csv", 'w') do |f|
-        f.write(table.to_csv)
+    def view_user
+        puts "Enter Your Account Title:"
+        title_search = gets
+        if @account_info.by_col[1].include?(title_search)
+            idx = @account_info.by_col[1].find_index(title_search) 
+            puts @account_info[idx.to_i]
+        else
+            puts "\n \n User Not Found \n \n"
+        end
     end
-end
 
-def balance_change(options={})
-    account_info = CSV.parse(File.read("Accounts.csv"), headers:true)
+    def view_all
+        @account_info.each {|i| puts i}
+    end
 
-    puts "Enter Your Account Title:"
-    title_search = gets
+    def add_user
+        puts " Enter New Account Title:"
+        title_search = gets
+        puts "Enter Balance"
+        balance_amount = gets
+        idx = @account_info.by_col[0][-1].to_i + 1
+        CSV.open("Accounts.csv", "a+") do |csv|
+            csv << [idx, title_search, balance_amount.to_f]
+        end
+    end
 
-    puts "Enter amount:"
-    new_amount = gets
+    def edit_user
+        puts "Enter Your Account Title:"
+        title_search = gets
+        if @account_info.by_col[1].include?(title_search)
+            puts " Enter New Account Title:"
+            new_title= gets
 
-    idx = account_info.by_col[1].find_index(title_search) 
-    account_info[idx.to_i]['balance'] = new_amount.to_f + account_info[idx.to_i]['balance'].to_f if options[:add]
-    account_info[idx.to_i]['balance'] = account_info[idx.to_i]['balance'].to_f - new_amount.to_f if options[:withdraw]  
+            idx = @account_info.by_col[1].find_index(title_search) 
+            @account_info[idx.to_i]['title'] = new_title
+            fileread = Filreader.new
+            fileread.setinfo(@account_info)
+
+        else
+            puts " \n \n User not found \n \n "
+        end
+
+    end
+
+    def delete_user
     
-    if options[:transfer]  
-        puts "Enter Title of Beneficiary"
-        beneficiary = gets
+        puts "Enter Your Account Title:"
+        title_search = gets
 
-        idx2 = account_info.by_col[1].find_index(beneficiary) 
+        if @account_info.by_col[1].include?(title_search)
 
-        account_info[idx.to_i]['balance'] = account_info[idx.to_i]['balance'].to_f - new_amount.to_f
-        account_info[idx2.to_i]['balance'] = new_amount.to_f + account_info[idx2.to_i]['balance'].to_f
+            idx = @account_info.by_col[1].find_index(title_search)
+
+            table = CSV.table("Accounts.csv")
+
+            table.delete(idx) 
+
+            File.open("Accounts.csv", 'w') do |f|
+                f.write(table.to_csv)
+            end
+        else
+            puts " \n \n User not found \n \n "
+        end
+    end
+
+    def balance_change(options={})
+
+        puts "Enter Your Account Title:"
+        title_search = gets
+        if @account_info.by_col[1].include?(title_search)
+                puts "Enter amount:"
+                new_amount = gets
+
+                idx = @account_info.by_col[1].find_index(title_search) 
+
+                remaining_balance = @account_info[idx.to_i]['balance'].to_f - new_amount.to_f 
+
+                @account_info[idx.to_i]['balance'] = new_amount.to_f + @account_info[idx.to_i]['balance'].to_f if options[:add]
+                if options[:withdraw]
+                    # remaining_balance = @account_info[idx.to_i]['balance'].to_f - new_amount.to_f 
+                    remaining_balance >=0 ? @account_info[idx.to_i]['balance'] = remaining_balance : (puts "\n \n Insufficient Balance \n \n")
+                end
+                
+                if options[:transfer]  
+                    if remaining_balance >=0 
+                        puts "Enter Title of Beneficiary"
+                        beneficiary = gets
+        
+                        if @account_info.by_col[1].include?(beneficiary)
+        
+                        idx2 = @account_info.by_col[1].find_index(beneficiary) 
+
+                        @account_info[idx.to_i]['balance'] = remaining_balance 
+                        @account_info[idx2.to_i]['balance'] = new_amount.to_f + @account_info[idx2.to_i]['balance'].to_f
+                    else
+                        puts " \n \n User not found \n \n"
+                    end
+                    
+
+
+
+
+                    else
+                        puts "\n \n Insufficient Balance \n \n"
+
+                        
+                    end
+
+                end
+
+                fileread = Filreader.new
+                fileread.setinfo(@account_info)
+                
+
+        
+            
+
+        else
+
+            puts " \n \n User not found \n \n"
+        end
+
 
     end
-    File.open("Accounts.csv", 'w') do |f|
-        f.write(account_info.to_csv)
-    end
+
+
+
 
 end
 
-
-
+user_session = User.new()
 while 1==1
-puts "Menu \n 1. Add New User \n 2. View User \n 3. View All Users \n 4. Edit User \n 5. Delete User \n 6. Deposit Amount \n 7. Withdraw Amount \n 8. Transfer\n 0. Quit"
+    puts "Menu \n 1. Add New User \n 2. View User \n 3. View All Users \n 4. Edit User \n 5. Delete User \n 6. Deposit Amount \n 7. Withdraw Amount \n 8. Transfer\n 0. Quit"
 
-menu_selection = gets
-case menu_selection.to_i
-when 1
-    add_user
-when 2
-    view_user
-when 3
-    view_all
-when 4
-    edit_user
-when 5
-    delete_user
-when 6
-    balance_change(add:true)
-when 7
-    balance_change(withdraw:true)
-when 8
-    balance_change(transfer:true)
-when 0
-    break
-else
-    "Invalid Selection"
-end
+    menu_selection = gets
+    case menu_selection.to_i
+    when 1
+        user_session.add_user
+    when 2
+        user_session.view_user
+    when 3
+        user_session.view_all
+    when 4
+        user_session.edit_user
+    when 5
+        user_session.delete_user
+    when 6
+        user_session.balance_change(add:true)
+    when 7
+        user_session.balance_change(withdraw:true)
+    when 8
+        user_session.balance_change(transfer:true)
+    when 0
+        break
+    else
+        "Invalid Selection"
+    end
 end
 
 
@@ -124,7 +190,6 @@ end
 #edit_user
 #delete_user
 #view_all
-
 # balance_change(withdraw:true)
 # balance_change(add:true)
 #balance_change(transfer:true)
